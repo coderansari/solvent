@@ -5,6 +5,7 @@ import { formatUnits, parseUnits } from "ethers";
 import { useWallet } from "../lib/wallet";
 import { getHandleClient } from "../lib/nox";
 import { vaultContract } from "../lib/vault";
+import { buildLiabilitiesTree } from "../lib/merkle";
 import { deployed } from "../lib/contracts";
 import { short } from "../lib/config";
 import { TxButton, useToast } from "./ui";
@@ -58,10 +59,18 @@ export default function Operator() {
   const attest = async () => {
     if (!signer) return;
     const vault = vaultContract(signer);
-    const tx = await vault.attest();
+    push("Building liabilities Merkle root from public state…");
+    const { tree, entries } = await buildLiabilitiesTree(vault);
+    const root = entries.length ? tree.root : ZERO;
+    const tx = await vault.attest(root);
     push("Computing reserves ≥ liabilities in the TEE…");
     await tx.wait();
-    push("Attested ✓ — now publish the verdict", "ok");
+    push(
+      `Attested ✓ — root committed over ${entries.length} customer${
+        entries.length === 1 ? "" : "s"
+      }; now publish`,
+      "ok"
+    );
   };
 
   const publish = async () => {
@@ -74,7 +83,7 @@ export default function Operator() {
     }
     const id = count - 1;
     const a = await vault.attestations(id);
-    if (a[3]) {
+    if (a[4]) {
       push(`Attestation #${id} already published.`, "err");
       return;
     }
@@ -163,8 +172,9 @@ export default function Operator() {
       <div className="card">
         <h2 className="section">Prove solvency</h2>
         <p className="hint">
-          Attest computes <span className="mono">reserves ≥ liabilities</span> in the TEE; publish
-          reveals only the boolean via a gateway-signed proof.
+          Attest computes <span className="mono">reserves ≥ liabilities</span> in the TEE and
+          commits a Merkle root over every customer balance (so each can prove inclusion);
+          publish reveals only the boolean via a gateway-signed proof.
         </p>
         <div className="spacer" />
         <div className="row">

@@ -13,22 +13,33 @@ async function main() {
   const usdc = await USDC.deploy();
   await usdc.waitForDeployment();
   const usdcAddr = await usdc.getAddress();
-  console.log(`TestUSDC deployed:      ${usdcAddr}`);
+  console.log(`TestUSDC deployed:         ${usdcAddr}`);
+
+  const CUSDC = await ethers.getContractFactory("ConfidentialUSDC");
+  const cusdc = await CUSDC.deploy();
+  await cusdc.waitForDeployment();
+  const cusdcAddr = await cusdc.getAddress();
+  console.log(`ConfidentialUSDC deployed: ${cusdcAddr}`);
 
   const Vault = await ethers.getContractFactory("SolventVault");
-  const vault = await Vault.deploy(usdcAddr, deployer.address, auditor);
+  const vault = await Vault.deploy(usdcAddr, deployer.address, auditor, cusdcAddr);
   await vault.waitForDeployment();
   const vaultAddr = await vault.getAddress();
-  console.log(`SolventVault deployed:  ${vaultAddr}`);
+  console.log(`SolventVault deployed:     ${vaultAddr}`);
+
+  const deployBlock =
+    vault.deploymentTransaction()?.blockNumber ?? (await ethers.provider.getBlockNumber());
 
   const deployment = {
     chainId: 11155111,
     network: network.name,
     TestUSDC: usdcAddr,
+    ConfidentialUSDC: cusdcAddr,
     SolventVault: vaultAddr,
     operator: deployer.address,
     auditor,
     noxCompute: "0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF",
+    deployBlock,
     deployedAt: new Date().toISOString(),
   };
 
@@ -41,8 +52,9 @@ async function main() {
   console.log("Wrote frontend/deployments/sepolia.json");
   console.log("\nVerify with:");
   console.log(`  npx hardhat verify --network sepolia ${usdcAddr}`);
+  console.log(`  npx hardhat verify --network sepolia ${cusdcAddr}`);
   console.log(
-    `  npx hardhat verify --network sepolia ${vaultAddr} ${usdcAddr} ${deployer.address} ${auditor}`
+    `  npx hardhat verify --network sepolia ${vaultAddr} ${usdcAddr} ${deployer.address} ${auditor} ${cusdcAddr}`
   );
 }
 

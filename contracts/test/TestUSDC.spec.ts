@@ -1,0 +1,30 @@
+import { expect } from "chai";
+import { ethers } from "hardhat";
+
+describe("TestUSDC", () => {
+  async function deploy() {
+    const [a, b] = await ethers.getSigners();
+    const usdc = await (await ethers.getContractFactory("TestUSDC")).deploy();
+    return { usdc, a, b };
+  }
+
+  it("has 6 decimals and the tUSDC symbol", async () => {
+    const { usdc } = await deploy();
+    expect(await usdc.decimals()).to.equal(6);
+    expect(await usdc.symbol()).to.equal("tUSDC");
+  });
+
+  it("faucet mints to the caller", async () => {
+    const { usdc, b } = await deploy();
+    const amt = 1_000_000n; // 1 tUSDC
+    await usdc.connect(b).faucet(amt);
+    expect(await usdc.balanceOf(b.address)).to.equal(amt);
+  });
+
+  it("mint mints to an arbitrary account", async () => {
+    const { usdc, a, b } = await deploy();
+    const amt = 500_000n;
+    await usdc.connect(a).mint(b.address, amt);
+    expect(await usdc.balanceOf(b.address)).to.equal(amt);
+  });
+});

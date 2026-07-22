@@ -19,13 +19,19 @@ Public   ─publishVerdict(gateway proof)→ on-chain ✅ / ❌ only
 Customer / Auditor ─Nox SDK decrypt→ own balance / totals (ACL-gated)
 ```
 
-1. **Deposit** — customers deposit a real test-USDC; the vault keeps an **encrypted** per-customer claim and an encrypted running total of liabilities.
+1. **Deposit** — customers deposit real test-USDC; the vault keeps an **encrypted** per-customer claim and an encrypted running total of liabilities. A **confidential deposit** path (ERC-7984) also lets the *amount itself* stay encrypted end-to-end — hidden even at the token layer.
 2. **Reserves** — the operator declares **encrypted** reserves (models cold + hot wallets).
-3. **Attest** — `attest()` computes `reserves ≥ liabilities` in the TEE, producing an encrypted boolean and marking it publicly decryptable.
+3. **Attest** — `attest(root)` computes `reserves ≥ liabilities` in the TEE, producing an encrypted boolean and marking it publicly decryptable, and commits a **Merkle root** over every customer balance.
 4. **Publish** — anyone submits the gateway-signed decryption proof; the contract verifies it and stores **only the boolean** verdict.
-5. **Selective disclosure** — a customer decrypts *their own* claim (proof of inclusion); the auditor decrypts the totals via a viewer key; everyone else sees `🔒`.
+5. **Selective disclosure** — a customer decrypts *their own* claim and can **prove inclusion** in the attested liabilities via `verifyInclusion` (no amount revealed); the auditor decrypts the totals via a viewer key; everyone else sees `🔒`.
 
 **No plaintext amount ever appears on-chain.** Events carry addresses and ids only.
+
+## What makes it strong
+
+- **Merkle proof-of-inclusion** — at attestation time the vault commits a Merkle root over `(customer, encrypted-balance-handle)` leaves. Any client rebuilds the identical tree from public on-chain state (events + `confidentialClaimOf`) and proves *their own* inclusion — turning "trust the boolean" into "verify you were counted", without leaking a single amount.
+- **Confidential deposits (ERC-7984)** — a `ConfidentialUSDC` confidential token hides transfer amounts. `depositConfidential` imports an encrypted amount and pulls it via `confidentialTransferFrom`, so the deposit size never appears in calldata or events (only the public faucet mint is the on-ramp boundary).
+- **Hardened + tested** — `ReentrancyGuard` on token-moving paths, custom errors, and a local Hardhat suite (18 tests: access control, guards, and Merkle valid/invalid proofs) plus a live Sepolia integration script covering the full encrypted flow.
 
 ## Why it's confidential (and composable)
 
@@ -40,9 +46,12 @@ solvent/
 ├── contracts/            # Hardhat project (Solidity 0.8.35, evmVersion cancun)
 │   ├── contracts/SolventVault.sol
 │   ├── contracts/TestUSDC.sol
-│   └── scripts/deploy.ts
+│   ├── contracts/ConfidentialUSDC.sol      # ERC-7984 confidential token
+│   ├── contracts/test/MerkleHarness.sol    # test-only
+│   ├── scripts/deploy.ts  scripts/smoke.ts  scripts/dryrun.ts
+│   └── test/              # local Hardhat suite (18 tests, no live Nox needed)
 ├── frontend/             # Next.js App Router + ethers v6 + @iexec-nox/handle
-│   ├── app/  components/  lib/
+│   ├── app/  components/  lib/  (lib/merkle.ts — client-side tree rebuild)
 │   └── deployments/sepolia.json   # written by deploy
 ├── docs/                 # ARCHITECTURE.md, THREAT_MODEL.md
 ├── feedback.md           # feedback on the iExec Nox tooling
@@ -62,14 +71,17 @@ cd contracts
 npm install
 cp .env.example .env        # fill in SEPOLIA_RPC_URL + PRIVATE_KEY (testnet only)
 npm run compile
-npm run deploy:sepolia      # deploys TestUSDC + SolventVault, writes frontend/deployments/sepolia.json
+npm test                    # 18 local unit tests (no live Nox needed)
+npm run deploy:sepolia      # deploys TestUSDC + ConfidentialUSDC + SolventVault, writes frontend/deployments/sepolia.json
+npm run smoke:sepolia       # full end-to-end proof on live Sepolia (see below)
 ```
 
 Optionally verify on Etherscan:
 
 ```bash
 npx hardhat verify --network sepolia <TestUSDC>
-npx hardhat verify --network sepolia <SolventVault> <TestUSDC> <operator> <auditor>
+npx hardhat verify --network sepolia <ConfidentialUSDC>
+npx hardhat verify --network sepolia <SolventVault> <TestUSDC> <operator> <auditor> <ConfidentialUSDC>
 ```
 
 Environment variables (`contracts/.env`):
@@ -93,16 +105,29 @@ The frontend reads contract addresses from `frontend/deployments/sepolia.json` (
 
 ## 3 · Try it end-to-end
 
-1. **Customer** tab → *Get test USDC* → *Approve & Deposit*.
-2. **Operator** tab → *Set encrypted reserves* → (optionally *Credit confidentially*) → *Attest solvency* → *Publish verdict*.
-3. **Dashboard** → see `✅ SOLVENT` with all numbers `🔒 hidden`.
-4. **Customer** → *Decrypt my balance* (only yours). **Auditor** → *Decrypt totals* (viewer key).
+1. **Customer** tab → *Get test USDC* → *Approve & Deposit*. (Optionally *Faucet & confidential deposit* — the amount is hidden even at the token layer.)
+2. **Operator** tab → *Set encrypted reserves* → (optionally *Credit confidentially*) → *Attest solvency* (commits the Merkle root) → *Publish verdict*.
+3. **Dashboard** → see `✅ SOLVENT` with all numbers `🔒 hidden` and the committed 🌳 root.
+4. **Customer** → *Decrypt my balance* (only yours) and *Verify my inclusion* (proves you were counted, on-chain). **Auditor** → *Decrypt totals* (viewer key).
 5. Open the contract on Etherscan — confirm **no amounts** are ever visible.
+
+## Testing
+
+```bash
+cd contracts
+npm test                 # local Hardhat suite: access control, guards, Merkle valid/invalid proofs
+npm run coverage         # coverage for the non-encrypted paths
+npm run smoke:sepolia    # live integration: deposit → credit → confidential deposit → setReserves
+                         #  → attest(root) → publicDecrypt → publishVerdict (asserts solvent=true) → verifyInclusion
+npm run dryrun:sepolia   # read-only health check of the live deployment
+```
+
+> **Why two tiers?** Nox encrypted operations run in an off-chain TEE reached via the live `NoxCompute` contract, so they can't execute on a bare local Hardhat node. The local suite covers everything non-encrypted (and the pure-keccak Merkle logic); the Sepolia script proves the encrypted flow against the real gateway.
 
 ## Tech
 
-- **Contracts:** Solidity 0.8.35 · `@iexec-nox/nox-protocol-contracts` · OpenZeppelin · Hardhat (evmVersion `cancun`)
-- **Frontend:** Next.js 14 · TypeScript · ethers v6 · `@iexec-nox/handle`
+- **Contracts:** Solidity 0.8.35 · `@iexec-nox/nox-protocol-contracts` · `@iexec-nox/nox-confidential-contracts` (ERC-7984) · OpenZeppelin (MerkleProof, ReentrancyGuard) · Hardhat (evmVersion `cancun`)
+- **Frontend:** Next.js 14 · TypeScript · ethers v6 · `@iexec-nox/handle` · `@openzeppelin/merkle-tree`
 - **Network:** Ethereum Sepolia · NoxCompute `0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF`
 
 ## License

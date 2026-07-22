@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@iexec-nox/handle": "^0.1.0-beta.13",
+    "@openzeppelin/merkle-tree": "^1.0.8",
     "ethers": "^6.13.0",
     "next": "14.2.5",
     "react": "^18.3.1",

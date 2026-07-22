@@ -15,6 +15,11 @@
         "internalType": "address",
         "name": "auditor_",
         "type": "address"
+      },
+      {
+        "internalType": "contract IERC7984",
+        "name": "confidentialAsset_",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -43,7 +48,17 @@
   },
   {
     "inputs": [],
+    "name": "NotConfidentialAsset",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NotOperator",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
     "type": "error"
   },
   {
@@ -73,6 +88,19 @@
       }
     ],
     "name": "AuditorUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "ConfidentialAssetUpdated",
     "type": "event"
   },
   {
@@ -137,6 +165,12 @@
       },
       {
         "indexed": false,
+        "internalType": "bytes32",
+        "name": "liabilitiesRoot",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
         "internalType": "uint256",
         "name": "blockNumber",
         "type": "uint256"
@@ -184,7 +218,13 @@
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "liabilitiesRoot",
+        "type": "bytes32"
+      }
+    ],
     "name": "attest",
     "outputs": [
       {
@@ -209,6 +249,11 @@
       {
         "internalType": "ebool",
         "name": "verdict",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "liabilitiesRoot",
         "type": "bytes32"
       },
       {
@@ -254,6 +299,19 @@
     "outputs": [
       {
         "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "confidentialAsset",
+    "outputs": [
+      {
+        "internalType": "contract IERC7984",
         "name": "",
         "type": "address"
       }
@@ -320,6 +378,24 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "externalEuint256",
+        "name": "encAmount",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "proof",
+        "type": "bytes"
+      }
+    ],
+    "name": "depositConfidential",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "latestAttestation",
     "outputs": [
@@ -328,6 +404,11 @@
           {
             "internalType": "ebool",
             "name": "verdict",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "liabilitiesRoot",
             "type": "bytes32"
           },
           {
@@ -357,6 +438,30 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "customer",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "balanceHandle",
+        "type": "bytes32"
+      }
+    ],
+    "name": "leafFor",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -429,6 +534,19 @@
   {
     "inputs": [
       {
+        "internalType": "contract IERC7984",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "setConfidentialAsset",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "operator_",
         "type": "address"
@@ -455,6 +573,40 @@
     "name": "setReserves",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "attestationId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "customer",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "balanceHandle",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "proof",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "verifyInclusion",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   }
 ]

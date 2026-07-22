@@ -10,6 +10,7 @@ import { HandleChip } from "./ui";
 type Att = {
   id: number;
   verdict: string;
+  liabilitiesRoot: string;
   blockNumber: number;
   timestamp: number;
   published: boolean;
@@ -46,16 +47,18 @@ export default function Dashboard() {
         out.push({
           id: i,
           verdict: a[0],
-          blockNumber: Number(a[1]),
-          timestamp: Number(a[2]),
-          published: a[3],
-          solvent: a[4],
+          liabilitiesRoot: a[1],
+          blockNumber: Number(a[2]),
+          timestamp: Number(a[3]),
+          published: a[4],
+          solvent: a[5],
         });
       }
       setAtts(out);
       // customer count from Deposited events (best-effort)
       try {
-        const logs = await v.queryFilter(v.filters.Deposited(), 0, "latest");
+        const from = deployed.deployBlock ?? 0;
+        const logs = await v.queryFilter(v.filters.Deposited(), from, "latest");
         setCustomers(new Set(logs.map((l: any) => l.args?.customer)).size);
       } catch {
         /* ignore */
@@ -142,7 +145,15 @@ export default function Dashboard() {
                   </span>
                   <span className="hint">#{a.id} · block {a.blockNumber}</span>
                 </div>
-                <HandleChip value={a.verdict} />
+                <div className="row">
+                  {a.liabilitiesRoot &&
+                    a.liabilitiesRoot !== "0x" + "0".repeat(64) && (
+                      <span className="hint" title={`Liabilities Merkle root: ${a.liabilitiesRoot}`}>
+                        🌳 root
+                      </span>
+                    )}
+                  <HandleChip value={a.verdict} />
+                </div>
               </div>
             ))}
           </div>
