@@ -12,6 +12,16 @@ export const SEPOLIA_PARAMS = {
   blockExplorerUrls: [EXPLORER],
 };
 
+// RPCs used for read/eth_getLogs, tried in order. publicnode is fast for
+// eth_call but rejects historical logs without a token, so log-friendly
+// endpoints come first.
+export const READ_RPCS = [
+  "https://sepolia.drpc.org",
+  "https://rpc.sepolia.org",
+  "https://1rpc.io/sepolia",
+  "https://ethereum-sepolia-rpc.publicnode.com",
+];
+
 export const txUrl = (hash: string) => `${EXPLORER}/tx/${hash}`;
 export const addrUrl = (addr: string) => `${EXPLORER}/address/${addr}`;
 export const short = (a?: string) =>

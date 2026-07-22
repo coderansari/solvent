@@ -5,6 +5,7 @@ import { JsonRpcProvider } from "ethers";
 import { deployed, isDeployed } from "./contracts";
 import { vaultContract } from "./vault";
 import { SEPOLIA_PARAMS } from "./config";
+import { queryVaultEvents } from "./logs";
 
 export type Att = {
   id: number;
@@ -58,17 +59,19 @@ export function useSolvency(pollMs = 12000) {
       }
       setAtts(out);
 
-      // event-sourced activity feed (best-effort)
+      // event-sourced activity feed (best-effort, resilient across RPCs)
       try {
         const from = deployed.deployBlock ?? 0;
         const short = (a?: string) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "");
-        const [dep, cred, res, att, pub] = await Promise.all([
-          v.queryFilter(v.filters.Deposited(), from, "latest"),
-          v.queryFilter(v.filters.CustomerCredited(), from, "latest"),
-          v.queryFilter(v.filters.ReservesUpdated(), from, "latest"),
-          v.queryFilter(v.filters.SolvencyAttested(), from, "latest"),
-          v.queryFilter(v.filters.SolvencyPublished(), from, "latest"),
-        ]);
+        const ev = await queryVaultEvents(
+          ["Deposited", "CustomerCredited", "ReservesUpdated", "SolvencyAttested", "SolvencyPublished"],
+          from
+        );
+        const dep = ev.Deposited;
+        const cred = ev.CustomerCredited;
+        const res = ev.ReservesUpdated;
+        const att = ev.SolvencyAttested;
+        const pub = ev.SolvencyPublished;
 
         setDeposits(dep.length);
         setCustomers(new Set(dep.map((l: any) => l.args?.customer)).size);

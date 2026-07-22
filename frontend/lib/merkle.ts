@@ -1,6 +1,7 @@
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { Contract } from "ethers";
 import { deployed } from "./contracts";
+import { queryVaultEvents } from "./logs";
 
 const ZERO32 = "0x" + "0".repeat(64);
 const LEAF_ENCODING = ["address", "bytes32"];
@@ -17,11 +18,12 @@ export async function buildLiabilitiesTree(
   vault: Contract
 ): Promise<{ tree: StandardMerkleTree<Entry>; entries: Entry[] }> {
   const from = deployed.deployBlock ?? 0;
-  const deposited = await vault.queryFilter(vault.filters.Deposited(), from, "latest");
-  const credited = await vault.queryFilter(vault.filters.CustomerCredited(), from, "latest");
+  const ev = await queryVaultEvents(["Deposited", "CustomerCredited"], from);
   const customers = Array.from(
     new Set(
-      [...deposited, ...credited].map((e: any) => (e.args.customer as string).toLowerCase())
+      [...ev.Deposited, ...ev.CustomerCredited].map((e: any) =>
+        (e.args.customer as string).toLowerCase()
+      )
     )
   );
 

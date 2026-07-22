@@ -87,6 +87,7 @@ export default function DashboardView({ sol }: { sol: Sol }) {
               width={220}
               height={220}
               style={{ objectFit: "contain", filter: "drop-shadow(0 10px 40px rgba(217,70,239,0.5))" }}
+              unoptimized
               priority
             />
           </motion.div>

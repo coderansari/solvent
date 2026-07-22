@@ -47,7 +47,7 @@ export default function Sidebar({
   return (
     <aside className={`sidebar ${open ? "open" : ""}`}>
       <div className="brand">
-        <Image src="/logo.png" alt="Solvent" width={34} height={34} className="side-logo" priority />
+        <Image src="/logo.png" alt="Solvent" width={34} height={34} className="side-logo" unoptimized priority />
         Solvent
       </div>
 
