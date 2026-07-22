@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useState } from "react";
+import { motion } from "framer-motion";
 
 type Toast = { id: number; msg: string; kind: "ok" | "err" | "info" };
 type ToastCtx = { push: (msg: string, kind?: Toast["kind"]) => void };
@@ -20,9 +21,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div className="toast-wrap">
         {toasts.map((t) => (
-          <div key={t.id} className={`toast ${t.kind === "ok" ? "ok" : t.kind === "err" ? "err" : ""}`}>
+          <motion.div
+            key={t.id}
+            layout
+            initial={{ opacity: 0, x: 40, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 40 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            className={`toast ${t.kind === "ok" ? "ok" : t.kind === "err" ? "err" : ""}`}
+          >
             {t.msg}
-          </div>
+          </motion.div>
         ))}
       </div>
     </Ctx.Provider>
@@ -33,6 +42,55 @@ export function useToast() {
   const v = useContext(Ctx);
   if (!v) throw new Error("useToast within ToastProvider");
   return v;
+}
+
+/** Scroll-reveal wrapper: fades + rises into view once. */
+export function Reveal({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** A glass card that reveals on scroll and lifts slightly on hover. */
+export function MotionCard({
+  children,
+  delay = 0,
+  className = "",
+  glow = false,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+  glow?: boolean;
+}) {
+  return (
+    <motion.div
+      className={`card ${glow ? "glow-violet" : ""} ${className}`}
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay }}
+      whileHover={{ y: -4 }}
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 export function HandleChip({ value }: { value?: string }) {
@@ -67,7 +125,8 @@ export function TxButton({
 }) {
   const [busy, setBusy] = useState(false);
   return (
-    <button
+    <motion.button
+      whileTap={{ scale: 0.97 }}
       className={`btn ${primary ? "primary" : ""} ${full ? "full" : ""}`}
       disabled={disabled || busy}
       onClick={async () => {
@@ -79,7 +138,13 @@ export function TxButton({
         }
       }}
     >
-      {busy ? "Working…" : children}
-    </button>
+      {busy ? (
+        <>
+          <span className="shimmer">◠</span> Working…
+        </>
+      ) : (
+        children
+      )}
+    </motion.button>
   );
 }

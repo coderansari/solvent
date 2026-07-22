@@ -16,3 +16,7 @@ export const txUrl = (hash: string) => `${EXPLORER}/tx/${hash}`;
 export const addrUrl = (addr: string) => `${EXPLORER}/address/${addr}`;
 export const short = (a?: string) =>
   a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
+
+/** Published Spline scene for the hero (empty string → procedural 3D fallback). */
+export const SPLINE_HERO_URL =
+  "https://my.spline.design/defiassetspadlock-GR88BK76f93CYJh0XDdtYCY7/";
