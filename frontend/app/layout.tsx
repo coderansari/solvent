@@ -22,9 +22,22 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Solvent — Confidential Proof of Solvency",
+  metadataBase: new URL("https://solvent.vercel.app"),
+  title: {
+    default: "Solvent — Prove Solvency, Reveal Nothing",
+    template: "%s · Solvent",
+  },
   description:
-    "Prove reserves ≥ liabilities on-chain without revealing the numbers. Built on iExec Nox.",
+    "Solvent proves reserves ≥ liabilities on-chain while every amount stays encrypted. The comparison runs inside an iExec Nox TEE — only the boolean verdict is published.",
+  keywords: ["proof of solvency", "proof of reserves", "confidential DeFi", "iExec Nox", "TEE", "zero-knowledge", "Ethereum"],
+  openGraph: {
+    title: "Solvent — Prove Solvency, Reveal Nothing",
+    description:
+      "Confidential proof-of-solvency on iExec Nox. Reserves ≥ liabilities, verified in a TEE, amounts never revealed.",
+    images: ["/logo.png"],
+    type: "website",
+  },
+  icons: { icon: "/icon.png", apple: "/apple-icon.png" },
 };
 
 export default function RootLayout({

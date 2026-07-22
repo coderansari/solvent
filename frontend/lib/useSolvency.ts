@@ -18,10 +18,21 @@ export type Att = {
 
 const readProvider = () => new JsonRpcProvider(SEPOLIA_PARAMS.rpcUrls[0]);
 
-/** Polls the vault for the recent attestation feed + customer count. */
+export type Activity = {
+  kind: "deposit" | "credit" | "reserves" | "attested" | "published";
+  title: string;
+  sub: string;
+  block: number;
+  tag?: string;
+  tagKind?: "pos" | "info";
+};
+
+/** Polls the vault for the recent attestation feed + customer count + activity. */
 export function useSolvency(pollMs = 12000) {
   const [atts, setAtts] = useState<Att[]>([]);
   const [customers, setCustomers] = useState(0);
+  const [deposits, setDeposits] = useState(0);
+  const [activity, setActivity] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -46,10 +57,67 @@ export function useSolvency(pollMs = 12000) {
         });
       }
       setAtts(out);
+
+      // event-sourced activity feed (best-effort)
       try {
         const from = deployed.deployBlock ?? 0;
-        const logs = await v.queryFilter(v.filters.Deposited(), from, "latest");
-        setCustomers(new Set(logs.map((l: any) => l.args?.customer)).size);
+        const short = (a?: string) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "");
+        const [dep, cred, res, att, pub] = await Promise.all([
+          v.queryFilter(v.filters.Deposited(), from, "latest"),
+          v.queryFilter(v.filters.CustomerCredited(), from, "latest"),
+          v.queryFilter(v.filters.ReservesUpdated(), from, "latest"),
+          v.queryFilter(v.filters.SolvencyAttested(), from, "latest"),
+          v.queryFilter(v.filters.SolvencyPublished(), from, "latest"),
+        ]);
+
+        setDeposits(dep.length);
+        setCustomers(new Set(dep.map((l: any) => l.args?.customer)).size);
+
+        const items: Activity[] = [];
+        for (const l of dep as any[])
+          items.push({
+            kind: "deposit",
+            title: "Confidential deposit",
+            sub: short(l.args?.customer),
+            block: l.blockNumber,
+            tag: "encrypted",
+            tagKind: "info",
+          });
+        for (const l of cred as any[])
+          items.push({
+            kind: "credit",
+            title: "Customer credited",
+            sub: short(l.args?.customer),
+            block: l.blockNumber,
+            tag: "private",
+            tagKind: "info",
+          });
+        for (const l of res as any[])
+          items.push({
+            kind: "reserves",
+            title: "Reserves updated",
+            sub: "encrypted total",
+            block: l.blockNumber,
+          });
+        for (const l of att as any[])
+          items.push({
+            kind: "attested",
+            title: "Solvency attested",
+            sub: `proof #${Number(l.args?.id)}`,
+            block: l.blockNumber,
+          });
+        for (const l of pub as any[])
+          items.push({
+            kind: "published",
+            title: l.args?.solvent ? "Verdict published · solvent" : "Verdict published",
+            sub: `proof #${Number(l.args?.id)}`,
+            block: l.blockNumber,
+            tag: l.args?.solvent ? "verified" : "insolvent",
+            tagKind: "pos",
+          });
+
+        items.sort((a, b) => b.block - a.block);
+        setActivity(items.slice(0, 6));
       } catch {
         /* best-effort */
       }
@@ -65,5 +133,5 @@ export function useSolvency(pollMs = 12000) {
   }, [load, pollMs]);
 
   const latest = atts[0];
-  return { atts, latest, customers, loading, reload: load };
+  return { atts, latest, customers, deposits, activity, loading, reload: load };
 }
