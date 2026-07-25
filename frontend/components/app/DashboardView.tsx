@@ -67,15 +67,6 @@ export default function DashboardView({ sol }: { sol: Sol }) {
           </motion.p>
         </div>
         <div className="welcome-art">
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "radial-gradient(50% 50% at 50% 50%, rgba(217,70,239,0.28), transparent 70%)",
-              filter: "blur(6px)",
-            }}
-          />
           <motion.div
             style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}
             animate={{ y: [0, -12, 0] }}
@@ -86,7 +77,7 @@ export default function DashboardView({ sol }: { sol: Sol }) {
               alt="Solvent"
               width={220}
               height={220}
-              style={{ objectFit: "contain", filter: "drop-shadow(0 10px 40px rgba(217,70,239,0.5))" }}
+              style={{ objectFit: "contain" }}
               unoptimized
               priority
             />

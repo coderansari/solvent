@@ -68,28 +68,11 @@ await sharp(markBuf)
   .png({ compressionLevel: 9 })
   .toFile("public/logo.png");
 
-// dark rounded tile for favicons -> readable at 16px
-function tile(size) {
-  const r = Math.round(size * 0.22);
-  return Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
-      <defs>
-        <radialGradient id="g" cx="50%" cy="40%" r="65%">
-          <stop offset="0%" stop-color="#2a1140"/>
-          <stop offset="100%" stop-color="#0a0713"/>
-        </radialGradient>
-      </defs>
-      <rect width="${size}" height="${size}" rx="${r}" fill="url(#g)"/>
-    </svg>`
-  );
-}
+// favicons: the same plain mark on transparency (no tile, no added effects),
+// just sized down for the browser tab.
 async function favicon(size, out) {
-  const inner = Math.round(size * 0.74);
-  const m = await sharp(markBuf)
-    .resize(inner, inner, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .toBuffer();
-  await sharp(tile(size))
-    .composite([{ input: m, gravity: "center" }])
+  await sharp(markBuf)
+    .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()
     .toFile(out);
 }
