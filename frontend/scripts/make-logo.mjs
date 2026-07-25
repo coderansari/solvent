@@ -1,7 +1,10 @@
-// Reprocess the source logo into a crisp transparent mark + high-contrast
-// favicons. The source is a soft glow render, so we key out the grey bg,
-// hard-cut the faint halo for a tight silhouette, sharpen, and (for favicons)
-// composite onto a dark rounded tile for readability at small sizes.
+// Reprocess the source logo into a CRISP transparent mark + high-contrast
+// favicons. The source is a neon 3D mark on a solid grey card with a soft
+// purple glow. The UI already supplies its own glow (radial gradient +
+// drop-shadow), so we DON'T keep the source halo — that only reads as a
+// grainy blur. Instead we cut a tight, anti-aliased silhouette of the mark
+// itself (saturated body + bright bevel highlights), at full source res with
+// a single high-quality downscale so nothing softens.
 // Run: node scripts/make-logo.mjs
 import sharp from "sharp";
 import { mkdirSync } from "fs";
@@ -17,43 +20,52 @@ const base = sharp(SRC).ensureAlpha();
 const { width, height } = await base.metadata();
 const { data } = await base.raw().toBuffer({ resolveWithObject: true });
 
-const px = (x, y) => {
-  const i = (y * width + x) * 4;
-  return [data[i], data[i + 1], data[i + 2]];
-};
-const corners = [px(4, 4), px(width - 5, 4), px(4, height - 5), px(width - 5, height - 5)];
-const bg = [0, 1, 2].map((c) => corners.reduce((s, p) => s + p[c], 0) / 4);
-
+// Build a clean alpha mask: keep pixels that are clearly part of the mark
+// (highly saturated neon) OR bright bevel highlights (near-white rims). The
+// grey background and the faint purple halo are low-saturation / mid-luminance
+// and get dropped. A tight ramp keeps the silhouette crisp, not fuzzy.
 for (let i = 0; i < data.length; i += 4) {
-  const r = data[i],
-    g = data[i + 1],
-    b = data[i + 2];
-  const d = Math.hypot(r - bg[0], g - bg[1], b - bg[2]);
+  const r = data[i] / 255,
+    g = data[i + 1] / 255,
+    b = data[i + 2] / 255;
   const mx = Math.max(r, g, b),
     mn = Math.min(r, g, b);
-  const sat = mx === 0 ? 0 : (mx - mn) / mx;
-  let a = Math.max(smoothstep(46, 96, d), smoothstep(0.34, 0.55, sat));
-  // hard-cut faint halo -> tight silhouette, then keep the solid mark crisp
-  a = a < 0.42 ? 0 : Math.min(1, (a - 0.42) / 0.5 + 0.25);
+  // Absolute chroma (colorfulness×brightness): the mark's neon body is vivid
+  // AND bright -> high chroma; the diffuse purple halo is the same hue but
+  // dimmer -> low chroma; grey bg -> ~0. This separates mark from glow where
+  // saturation alone can't.
+  const chroma = mx - mn;
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+  // vivid neon body of the mark
+  const chromaKey = smoothstep(0.4, 0.6, chroma);
+  // bright metallic bevel highlights (near-white rims) that carry the 3D edge
+  const rimKey = smoothstep(0.85, 0.95, lum);
+  let a = Math.max(chromaKey, rimKey);
+
+  // hard floor to cut the faint halo, then re-solidify the mark so its
+  // interior stays fully opaque (no see-through blotches)
+  a = a < 0.5 ? 0 : Math.min(1, (a - 0.5) / 0.25 + 0.4);
   data[i + 3] = Math.round(a * 255);
 }
 
 mkdirSync("public", { recursive: true });
 
-// tightly-cropped, punchier mark on transparency
+// Anti-alias the mask edge with a hair of blur so the silhouette isn't jagged,
+// then tight-trim to the mark's bounding box. Everything stays at source res.
 const mark = sharp(data, { raw: { width, height, channels: 4 } })
   .png()
-  .trim({ threshold: 24 })
-  .modulate({ saturation: 1.18, brightness: 1.05 })
-  .sharpen({ sigma: 1 });
+  .blur(0.6)
+  .trim({ threshold: 12 })
+  .modulate({ saturation: 1.12 });
 const markBuf = await mark.toBuffer();
 
-// 1) web logo (transparent, small padding so it isn't clipped)
+// 1) web logo: crisp transparent mark, high res (single downscale), small
+//    padding so the UI drop-shadow has room and edges never clip.
 await sharp(markBuf)
-  .resize(432, 432, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-  .extend({ top: 40, bottom: 40, left: 40, right: 40, background: { r: 0, g: 0, b: 0, alpha: 0 } })
-  .resize(512, 512)
-  .png()
+  .resize(576, 576, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+  .extend({ top: 32, bottom: 32, left: 32, right: 32, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+  .png({ compressionLevel: 9 })
   .toFile("public/logo.png");
 
 // dark rounded tile for favicons -> readable at 16px
@@ -72,7 +84,7 @@ function tile(size) {
   );
 }
 async function favicon(size, out) {
-  const inner = Math.round(size * 0.72);
+  const inner = Math.round(size * 0.74);
   const m = await sharp(markBuf)
     .resize(inner, inner, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .toBuffer();
@@ -84,4 +96,4 @@ async function favicon(size, out) {
 await favicon(256, "app/icon.png");
 await favicon(180, "app/apple-icon.png");
 
-console.log("crisp logo + favicons written", { bg });
+console.log("crisp logo + favicons written");
