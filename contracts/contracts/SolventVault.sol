@@ -99,6 +99,19 @@ contract SolventVault is ReentrancyGuard {
     error AlreadyPublished();
     error ZeroAddress();
     error NotConfidentialAsset();
+    error ReservesNotSet();
+    error AmountTooLarge();
+
+    /// @notice Upper bound on a single public deposit, mirroring the token faucet cap.
+    /// @dev Keeps the encrypted liability accumulator far below 2**256. An overflow there
+    ///      would wrap `_totalLiabilities` to a small value and make the vault report
+    ///      `Solvent` — and because the sum only ever exists as ciphertext, the contract
+    ///      cannot observe the carry to revert on it. Bounding the public input is the only
+    ///      free place to enforce this, which is why the accumulators below use `Nox.add`
+    ///      rather than `Nox.safeAdd`: with amounts capped here and at both faucets,
+    ///      overflow is unreachable, and `safeAdd` would add a TEE round-trip per deposit
+    ///      while still leaving nothing actionable to do with the encrypted carry flag.
+    uint256 public constant MAX_DEPOSIT = 1_000_000 * 10 ** 6;
 
     modifier onlyOperator() {
         if (msg.sender != operator) revert NotOperator();
@@ -124,6 +137,7 @@ contract SolventVault is ReentrancyGuard {
      *         are encrypted.
      */
     function deposit(uint256 amount) external nonReentrant {
+        if (amount > MAX_DEPOSIT) revert AmountTooLarge();
         asset.safeTransferFrom(msg.sender, address(this), amount);
 
         euint256 amt = Nox.toEuint256(amount);
@@ -225,8 +239,14 @@ contract SolventVault is ReentrancyGuard {
      *        block. Leaves are public data, so any client can rebuild the tree from events +
      *        {confidentialClaimOf} and prove its own inclusion via {verifyInclusion}. Amounts
      *        stay encrypted. Pass `bytes32(0)` to skip the commitment.
+     * @dev Reverts {ReservesNotSet} until the operator has declared reserves. Without this
+     *      guard an uninitialized `_reserves` handle resolves to the typed zero handle (see
+     *      `Nox._resolveUndefinedHandle`), so a vault that has never set reserves and has no
+     *      customers would compute `0 >= 0` and publish a vacuous `Solvent` verdict.
      */
     function attest(bytes32 liabilitiesRoot) external onlyOperator returns (uint256 id) {
+        if (!Nox.isInitialized(_reserves)) revert ReservesNotSet();
+
         ebool solvent = Nox.ge(_reserves, _totalLiabilities);
         Nox.allowThis(solvent);
         Nox.allowPublicDecryption(solvent);
@@ -278,9 +298,17 @@ contract SolventVault is ReentrancyGuard {
     }
 
     /// @notice Transfer the operator role (e.g. hand off to a Safe multisig).
+    /// @dev Re-grants the live totals to the incoming operator. A handle's ACL is fixed per
+    ///      handle, so rotating the role alone would leave the new operator unable to
+    ///      decrypt `_reserves` / `_totalLiabilities` until the next mutation minted a fresh
+    ///      handle. Mirrors {setAuditor}. Note that Nox exposes no permanent revoke (only
+    ///      `disallowTransient`), so the outgoing operator keeps access to these *current*
+    ///      handles; the next mutation supersedes them with handles it was never granted.
     function setOperator(address operator_) external onlyOperator {
         if (operator_ == address(0)) revert ZeroAddress();
         operator = operator_;
+        if (Nox.isInitialized(_reserves)) Nox.allow(_reserves, operator_);
+        if (Nox.isInitialized(_totalLiabilities)) Nox.allow(_totalLiabilities, operator_);
         emit OperatorUpdated(operator_);
     }
 
@@ -353,8 +381,11 @@ contract SolventVault is ReentrancyGuard {
     // ------------------------------------------------------------------ //
     //                        ACL helpers (critical)                      //
     // ------------------------------------------------------------------ //
-    // Nox access clears at end-of-tx, so every stored handle MUST be re-granted
-    // after each mutation, or it becomes inaccessible on the next transaction.
+    // A handle's permissions are bound to that exact handle. Every Nox operation
+    // (`add`, `ge`, `fromExternal`, …) returns a NEW handle carrying no permissions,
+    // so each stored handle MUST be re-granted after every mutation or it becomes
+    // undecryptable from the next transaction onward. Access is not "cleared" — the
+    // handle's identity changes underneath the storage slot.
 
     function _grantBalance(euint256 bal, address owner) private {
         Nox.allowThis(bal);

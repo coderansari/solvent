@@ -27,4 +27,37 @@ describe("TestUSDC", () => {
     await usdc.connect(a).mint(b.address, amt);
     expect(await usdc.balanceOf(b.address)).to.equal(amt);
   });
+
+  // Regression: an uncapped faucet let anyone inflate SolventVault's encrypted
+  // `_totalLiabilities` — griefing every verdict to `Insolvent`, and at extreme values
+  // wrapping the accumulator past 2**256 so it would read `Solvent` instead.
+  it("faucet rejects amounts above MAX_MINT", async () => {
+    const { usdc, b } = await deploy();
+    const cap = await usdc.MAX_MINT();
+    await expect(usdc.connect(b).faucet(cap + 1n)).to.be.revertedWithCustomError(
+      usdc,
+      "AmountTooLarge"
+    );
+    await expect(usdc.connect(b).faucet(ethers.MaxUint256)).to.be.revertedWithCustomError(
+      usdc,
+      "AmountTooLarge"
+    );
+    // the cap itself is allowed
+    await usdc.connect(b).faucet(cap);
+    expect(await usdc.balanceOf(b.address)).to.equal(cap);
+  });
+
+  it("mint is deployer-only and capped", async () => {
+    const { usdc, a, b } = await deploy();
+    await expect(usdc.connect(b).mint(b.address, 1n)).to.be.revertedWithCustomError(
+      usdc,
+      "NotOwner"
+    );
+    const cap = await usdc.MAX_MINT();
+    await expect(usdc.connect(a).mint(b.address, cap + 1n)).to.be.revertedWithCustomError(
+      usdc,
+      "AmountTooLarge"
+    );
+    expect(await usdc.owner()).to.equal(a.address);
+  });
 });

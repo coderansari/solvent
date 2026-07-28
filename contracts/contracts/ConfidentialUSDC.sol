@@ -16,6 +16,15 @@ import {Nox, euint256} from "@iexec-nox/nox-protocol-contracts/contracts/sdk/Nox
  *      the encrypted amount and invokes the vault's {IERC7984Receiver} callback.
  */
 contract ConfidentialUSDC is ERC7984 {
+    /// @notice Largest amount a single faucet call may create (1,000,000 cUSDC).
+    /// @dev Bounds the encrypted amounts that can reach {SolventVault}'s liability
+    ///      accumulator. See the equivalent cap on {TestUSDC} for the reasoning: an
+    ///      overflow inside encrypted arithmetic cannot be detected and reverted
+    ///      on-chain, so the domain is bounded at the public mint boundary instead.
+    uint256 public constant MAX_MINT = 1_000_000 * 10 ** 6;
+
+    error AmountTooLarge();
+
     constructor() ERC7984("Confidential USD Coin", "cUSDC", "") {}
 
     /// @notice ERC-7984 recommends 6 decimals; override the base default of 18.
@@ -24,10 +33,12 @@ contract ConfidentialUSDC is ERC7984 {
     }
 
     /**
-     * @notice Open testnet faucet — mints `amount` (public) confidential tokens to the caller.
-     *         This mint is the documented public on-ramp; all subsequent transfers are encrypted.
+     * @notice Open testnet faucet — mints up to {MAX_MINT} (public) confidential tokens to
+     *         the caller. This mint is the documented public on-ramp; all subsequent
+     *         transfers are encrypted.
      */
     function faucet(uint256 amount) external {
+        if (amount > MAX_MINT) revert AmountTooLarge();
         _mint(msg.sender, Nox.toEuint256(amount));
     }
 }

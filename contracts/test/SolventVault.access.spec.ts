@@ -109,4 +109,43 @@ describe("SolventVault — access control & guards", () => {
       "NotConfidentialAsset"
     );
   });
+
+  // Regression: an uninitialized `_reserves` handle is bytes32(0), which
+  // Nox._resolveUndefinedHandle maps to the typed ZERO handle. Without the guard,
+  // `ge(0, 0)` is true and a vault that never set reserves would publish a vacuous
+  // `Solvent` verdict. The guard fires before any Nox call, so it is testable locally.
+  it("attest reverts ReservesNotSet before reserves are declared", async () => {
+    const { vault, operator } = await deploy();
+    await expect(vault.connect(operator).attest(ZERO32)).to.be.revertedWithCustomError(
+      vault,
+      "ReservesNotSet"
+    );
+    expect(await vault.attestationsCount()).to.equal(0);
+  });
+
+  // Regression: bounds the encrypted liability accumulator well below 2**256, where a
+  // wrap would silently flip the verdict to `Solvent`. Checked before safeTransferFrom.
+  it("deposit reverts AmountTooLarge above MAX_DEPOSIT", async () => {
+    const { vault, customer } = await deploy();
+    const cap = await vault.MAX_DEPOSIT();
+    await expect(
+      vault.connect(customer).deposit(cap + 1n)
+    ).to.be.revertedWithCustomError(vault, "AmountTooLarge");
+    await expect(
+      vault.connect(customer).deposit(ethers.MaxUint256)
+    ).to.be.revertedWithCustomError(vault, "AmountTooLarge");
+  });
+
+  // setOperator now re-grants the live totals to the incoming operator. On a fresh vault
+  // both handles are uninitialized, so the isInitialized guards skip the Nox calls and the
+  // rotation still works locally. The grant itself needs the live coprocessor — covered on
+  // Sepolia by scripts/smoke.ts.
+  it("setOperator rotates without touching Nox while handles are uninitialized", async () => {
+    const { vault, operator, outsider } = await deploy();
+    await expect(vault.connect(operator).setOperator(outsider.address)).to.emit(
+      vault,
+      "OperatorUpdated"
+    );
+    expect(await vault.operator()).to.equal(outsider.address);
+  });
 });
