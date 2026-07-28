@@ -37,10 +37,10 @@ export default function DashboardView({ sol }: { sol: Sol }) {
   const verdictText = !latest
     ? "No proof yet"
     : !latest.published
-    ? "PENDING"
+    ? "Pending"
     : latest.solvent
-    ? "SOLVENT"
-    : "INSOLVENT";
+    ? "Solvent"
+    : "Insolvent";
 
   return (
     <div className="main-inner">
@@ -48,9 +48,9 @@ export default function DashboardView({ sol }: { sol: Sol }) {
       <div className="welcome">
         <div>
           <motion.h1
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
             Confidential proof
             <br />
@@ -58,43 +58,41 @@ export default function DashboardView({ sol }: { sol: Sol }) {
           </motion.h1>
           <motion.p
             className="lede"
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.08 }}
+            transition={{ duration: 0.45, delay: 0.06 }}
           >
             <span className="accent">Private by default.</span> Verifiable always. Reserves are
             proven greater than liabilities inside a Nox TEE — the amounts never leave encrypted.
           </motion.p>
         </div>
         <div className="welcome-art">
-          <motion.div
-            style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}
-            animate={{ y: [0, -12, 0] }}
-            transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-          >
+          <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
             <Image
               src="/logo.png"
-              alt="Solvent"
+              alt=""
               width={220}
               height={220}
               style={{ objectFit: "contain" }}
               unoptimized
               priority
             />
-          </motion.div>
+          </div>
         </div>
       </div>
 
-      {/* verdict banner */}
+      {/* the verdict — the one loud thing on this page */}
       <motion.div
         className="card glow-violet"
-        initial={{ opacity: 0, y: 20 }}
+        role="status"
+        aria-live="polite"
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.05 }}
-        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}
+        transition={{ duration: 0.45, delay: 0.04 }}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--s-5)", flexWrap: "wrap" }}
       >
-        <div className={`verdict ${verdictClass}`} style={{ fontSize: 40 }}>
-          <span className="seal" style={{ width: 48, height: 48, fontSize: 24 }}>
+        <div className={`verdict ${verdictClass}`}>
+          <span className="seal" aria-hidden="true">
             {!latest || !latest.published ? "○" : latest.solvent ? "✓" : "✕"}
           </span>
           {loading ? "…" : verdictText}
@@ -105,69 +103,52 @@ export default function DashboardView({ sol }: { sol: Sol }) {
               ? `Attestation #${latest.id} · block ${latest.blockNumber} · ${timeAgo(latest.timestamp)}`
               : "Awaiting the first solvency attestation"}
           </div>
-          <div className="hint" style={{ marginTop: 4 }}>
+          <div className="hint" style={{ marginTop: "var(--s-1)" }}>
             Reserves ≥ liabilities · verified in TEE · only the boolean is public
           </div>
         </div>
       </motion.div>
 
-      {/* KPIs */}
+      {/* KPIs — each value reads from chain state */}
       <div className="kpi-row">
         <StatCard
           Icon={IcoProve}
           label="Proofs generated"
           value={loading ? "—" : String(atts.length ? sol.latest!.id + 1 : 0)}
           sub={latest ? `latest #${latest.id}` : "none yet"}
-          seed={11}
-          color="var(--violet)"
-          delay={0.05}
+          delay={0.04}
         />
         <StatCard
           Icon={IcoUsers}
           label="Customers"
           value={loading ? "—" : String(customers)}
           sub="in liabilities root"
-          seed={23}
-          color="var(--magenta)"
-          delay={0.1}
+          delay={0.08}
         />
         <StatCard
           Icon={IcoLock}
           label="Confidential deposits"
           value={loading ? "—" : String(deposits)}
           sub="amounts encrypted"
-          seed={37}
-          color="var(--violet-2)"
-          delay={0.15}
-        />
-        <StatCard
-          Icon={IcoVault}
-          label="Status"
-          value={loading ? "—" : latest?.published ? (latest.solvent ? "Solvent" : "Insolvent") : "Pending"}
-          sub="on Sepolia"
-          up={!!latest?.solvent}
-          seed={41}
-          color="var(--emerald)"
-          delay={0.2}
+          delay={0.12}
         />
       </div>
 
       {/* activity */}
       <motion.div
         className="card"
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.12 }}
+        transition={{ duration: 0.45, delay: 0.1 }}
       >
         <div className="panel-head">
           <span className="panel-title">Recent activity</span>
-          <a className="link" href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 13 }}>
-            On-chain
-          </a>
         </div>
         <div className="spacer" />
         {activity.length === 0 ? (
-          <div className="hint">{loading ? "Loading on-chain events…" : "No activity yet."}</div>
+          <div className="hint">
+            {loading ? "Loading on-chain events…" : "Deposit or attest to see events here."}
+          </div>
         ) : (
           activity.map((a, i) => {
             const Ico = ACT_ICON[a.kind] ?? IcoVault;

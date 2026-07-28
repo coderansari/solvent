@@ -143,8 +143,9 @@ export default function Customer() {
           <p className="hint">Get test USDC, then deposit to receive an encrypted claim.</p>
           <div className="spacer" />
           <div className="field">
-            <label>Amount (tUSDC)</label>
+            <label htmlFor="deposit-amount">Amount (tUSDC)</label>
             <input
+              id="deposit-amount"
               className="input tnum"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -172,8 +173,9 @@ export default function Customer() {
           </p>
           <div className="spacer" />
           <div className="field">
-            <label>Amount (cUSDC)</label>
+            <label htmlFor="conf-amount">Amount (cUSDC)</label>
             <input
+              id="conf-amount"
               className="input tnum"
               value={confAmount}
               onChange={(e) => setConfAmount(e.target.value)}

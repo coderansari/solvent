@@ -2,39 +2,6 @@
 
 import { motion } from "framer-motion";
 
-/* deterministic pseudo-random so SSR and client match (no Math.random) */
-function seeded(seed: number) {
-  let s = seed % 2147483647;
-  if (s <= 0) s += 2147483646;
-  return () => (s = (s * 16807) % 2147483647) / 2147483647;
-}
-
-export function Sparkline({ seed = 7, color = "var(--violet)" }: { seed?: number; color?: string }) {
-  const r = seeded(seed + 3);
-  const n = 16;
-  const W = 88;
-  const H = 34;
-  const pts = Array.from({ length: n }, (_, i) => {
-    const y = 0.55 + 0.3 * Math.sin(i * 0.68 + seed) + (r() - 0.5) * 0.28;
-    return [(i / (n - 1)) * W, H - Math.min(1, Math.max(0.08, y)) * (H - 4) - 2];
-  });
-  const line = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
-  const area = `${line} L${W} ${H} L0 ${H} Z`;
-  const gid = `spk${seed}`;
-  return (
-    <svg className="spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#${gid})`} />
-      <path d={line} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export function Donut({
   segments,
   size = 108,
@@ -94,10 +61,8 @@ export function Donut({
         }}
       >
         <div>
-          <div className="display" style={{ fontSize: 24, fontWeight: 700 }}>
-            {center}
-          </div>
-          {sub && <div style={{ fontSize: 11, color: "var(--faint)" }}>{sub}</div>}
+          <div className="display donut-center">{center}</div>
+          {sub && <div className="donut-sub">{sub}</div>}
         </div>
       </div>
     </div>
@@ -110,8 +75,6 @@ export function StatCard({
   value,
   sub,
   up,
-  seed,
-  color,
   delay = 0,
 }: {
   Icon: (p: { size?: number }) => JSX.Element;
@@ -119,17 +82,15 @@ export function StatCard({
   value: string;
   sub?: string;
   up?: boolean;
-  seed: number;
-  color?: string;
   delay?: number;
 }) {
   return (
     <motion.div
       className="card kpi"
-      initial={{ opacity: 0, y: 22 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay }}
-      whileHover={{ y: -4 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay }}
+      whileHover={{ y: -3 }}
     >
       <div className="khead">
         <span className="kico">
@@ -144,7 +105,6 @@ export function StatCard({
           {sub}
         </div>
       )}
-      <Sparkline seed={seed} color={color} />
     </motion.div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { motion } from "framer-motion";
 import { useWallet } from "../../lib/wallet";
 import { deployed } from "../../lib/contracts";
 import { addrUrl, short } from "../../lib/config";
@@ -57,6 +56,7 @@ export default function Sidebar({
           <button
             key={n.id}
             className={`nav-item ${view === n.id ? "active" : ""}`}
+            aria-current={view === n.id ? "page" : undefined}
             onClick={() => onView(n.id)}
           >
             <n.Icon size={19} />
@@ -84,41 +84,27 @@ export default function Sidebar({
 
       <div className="side-sep" />
 
-      <div className="score-card">
-        <div className="cap">Privacy posture</div>
-        <div className="num">100</div>
-        <div className="tag">Fully encrypted</div>
-        <div className="score-bar">
-          <motion.span
-            initial={{ width: 0 }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          />
-        </div>
-      </div>
-
       {address ? (
         <a
           className="wallet-chip"
           href={addrUrl(address)}
           target="_blank"
           rel="noreferrer"
-          style={{ textDecoration: "none" }}
         >
           <span className="wallet-dot" />
           <span style={{ minWidth: 0 }}>
-            <div className="mono" style={{ fontSize: 13 }}>
+            <div className="mono" style={{ fontSize: "var(--fs-sm)" }}>
               {short(address)}
             </div>
-            <div style={{ fontSize: 11, color: "var(--faint)", textTransform: "capitalize" }}>
-              {roleOf(address)} · {onSepolia ? "Sepolia" : "wrong net"}
+            <div className="wallet-role">
+              {roleOf(address)} · {onSepolia ? "Sepolia" : "Wrong network"}
             </div>
           </span>
         </a>
       ) : (
         <button className="wallet-chip" onClick={connect}>
           <span className="wallet-dot" />
-          <span style={{ fontSize: 13 }}>Connect wallet</span>
+          <span style={{ fontSize: "var(--fs-sm)" }}>Connect wallet</span>
         </button>
       )}
     </aside>

@@ -128,8 +128,9 @@ export default function Operator() {
           <p className="hint">Declare your total reserves — encrypted before it ever hits chain.</p>
           <div className="spacer" />
           <div className="field">
-            <label>Reserves (tUSDC)</label>
+            <label htmlFor="reserves-amount">Reserves (tUSDC)</label>
             <input
+              id="reserves-amount"
               className="input tnum"
               value={reserves}
               onChange={(e) => setReserves(e.target.value)}
@@ -146,8 +147,9 @@ export default function Operator() {
           <p className="hint">Adjust a balance privately (e.g. PnL) so it diverges from deposits.</p>
           <div className="spacer" />
           <div className="field">
-            <label>Customer address</label>
+            <label htmlFor="credit-address">Customer address</label>
             <input
+              id="credit-address"
               className="input mono"
               placeholder="0x…"
               value={creditAddr}
@@ -155,8 +157,9 @@ export default function Operator() {
             />
           </div>
           <div className="field">
-            <label>Amount (tUSDC)</label>
+            <label htmlFor="credit-amount">Amount (tUSDC)</label>
             <input
+              id="credit-amount"
               className="input tnum"
               value={creditAmt}
               onChange={(e) => setCreditAmt(e.target.value)}

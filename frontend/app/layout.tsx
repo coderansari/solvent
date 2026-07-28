@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "../lib/wallet";
-import SmoothScroll from "../components/SmoothScroll";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -22,7 +21,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://solvent.vercel.app"),
+  metadataBase: new URL("https://solvent-app.vercel.app"),
   title: {
     default: "Solvent",
     template: "%s · Solvent",
@@ -51,9 +50,7 @@ export default function RootLayout({
       className={`${display.variable} ${sans.variable} ${mono.variable}`}
     >
       <body>
-        <SmoothScroll>
-          <WalletProvider>{children}</WalletProvider>
-        </SmoothScroll>
+        <WalletProvider>{children}</WalletProvider>
       </body>
     </html>
   );

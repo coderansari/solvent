@@ -11,16 +11,11 @@
   "dependencies": {
     "@iexec-nox/handle": "^0.1.0-beta.13",
     "@openzeppelin/merkle-tree": "^1.0.8",
-    "@react-three/drei": "^9.122.0",
-    "@react-three/fiber": "^8.18.0",
-    "@react-three/postprocessing": "^2.19.1",
     "ethers": "^6.13.0",
     "framer-motion": "^11.18.2",
-    "lenis": "^1.3.25",
     "next": "14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "three": "^0.169.0",
     "viem": "^2.55.4"
   },
   "devDependencies": {
