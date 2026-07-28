@@ -105,7 +105,7 @@ The frontend reads contract addresses from `frontend/deployments/sepolia.json` (
 
 ## Live deployment (Ethereum Sepolia)
 
-Live app: **https://solvent-app.vercel.app** — all three contracts verified on Etherscan.
+Live app: **https://solvent-psi.vercel.app** — all three contracts verified on Etherscan.
 
 | Contract | Address |
 | --- | --- |

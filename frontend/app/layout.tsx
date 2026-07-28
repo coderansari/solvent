@@ -21,7 +21,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://solvent-app.vercel.app"),
+  metadataBase: new URL("https://solvent-psi.vercel.app"),
   title: {
     default: "Solvent",
     template: "%s · Solvent",

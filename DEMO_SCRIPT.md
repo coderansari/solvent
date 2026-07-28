@@ -4,7 +4,7 @@ Goal: show a real, working confidential proof-of-solvency on Sepolia — amounts
 
 **Setup before recording**
 - Contracts are deployed and Etherscan-verified. Vault `0xDb72f13b746c326F0f2291483A3979eFb6cA932b`, tUSDC `0x1FA49cc3E1e6ae3D8A717eD36C7426bC58883255`, cUSDC `0xe4393Cb1834F0812D2c514f8C1920b56fd1b90F9`.
-- Frontend on https://solvent-app.vercel.app (or local).
+- Frontend on https://solvent-psi.vercel.app (or local).
 - MetaMask on Sepolia, unlocked, with the Operator account (= deployer = auditor) selected. A second Customer account is optional — the operator address can play customer too, which saves account-switching time on camera.
 - Etherscan open on the vault address in a second tab.
 
