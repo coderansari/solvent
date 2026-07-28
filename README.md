@@ -31,7 +31,7 @@ Customer / Auditor ─Nox SDK decrypt→ own balance / totals (ACL-gated)
 
 - **Merkle proof-of-inclusion** — at attestation time the vault commits a Merkle root over `(customer, encrypted-balance-handle)` leaves. Any client rebuilds the identical tree from public on-chain state (events + `confidentialClaimOf`) and proves *their own* inclusion — turning "trust the boolean" into "verify you were counted", without leaking a single amount.
 - **Confidential deposits (ERC-7984)** — a `ConfidentialUSDC` confidential token hides transfer amounts. `depositConfidential` imports an encrypted amount and pulls it via `confidentialTransferFrom`, so the deposit size never appears in calldata or events (only the public faucet mint is the on-ramp boundary).
-- **Hardened + tested** — `ReentrancyGuard` on token-moving paths, custom errors, and a local Hardhat suite (18 tests: access control, guards, and Merkle valid/invalid proofs) plus a live Sepolia integration script covering the full encrypted flow.
+- **Hardened + tested** — `ReentrancyGuard` on token-moving paths, custom errors, capped mints so the encrypted liability accumulator can't be griefed or overflowed, an `attest` guard that refuses to publish a vacuous verdict before reserves are declared, and a local Hardhat suite (23 tests: access control, guards, input bounds, and Merkle valid/invalid proofs) plus a live Sepolia integration script covering the full encrypted flow.
 
 ## Why it's confidential (and composable)
 
@@ -49,7 +49,7 @@ solvent/
 │   ├── contracts/ConfidentialUSDC.sol      # ERC-7984 confidential token
 │   ├── contracts/test/MerkleHarness.sol    # test-only
 │   ├── scripts/deploy.ts  scripts/smoke.ts  scripts/dryrun.ts
-│   └── test/              # local Hardhat suite (18 tests, no live Nox needed)
+│   └── test/              # local Hardhat suite (23 tests, no live Nox needed)
 ├── frontend/             # Next.js App Router + ethers v6 + @iexec-nox/handle
 │   ├── app/  components/  lib/  (lib/merkle.ts — client-side tree rebuild)
 │   └── deployments/sepolia.json   # written by deploy
@@ -71,7 +71,7 @@ cd contracts
 npm install
 cp .env.example .env        # fill in SEPOLIA_RPC_URL + PRIVATE_KEY (testnet only)
 npm run compile
-npm test                    # 18 local unit tests (no live Nox needed)
+npm test                    # 23 local unit tests (no live Nox needed)
 npm run deploy:sepolia      # deploys TestUSDC + ConfidentialUSDC + SolventVault, writes frontend/deployments/sepolia.json
 npm run smoke:sepolia       # full end-to-end proof on live Sepolia (see below)
 ```
@@ -103,13 +103,25 @@ npm run dev          # http://localhost:3000
 
 The frontend reads contract addresses from `frontend/deployments/sepolia.json` (written by the deploy step). Connect MetaMask on Sepolia.
 
+## Live deployment (Ethereum Sepolia)
+
+Live app: **https://solvent-app.vercel.app** — all three contracts verified on Etherscan.
+
+| Contract | Address |
+| --- | --- |
+| `SolventVault` | [`0xDb72f13b746c326F0f2291483A3979eFb6cA932b`](https://sepolia.etherscan.io/address/0xDb72f13b746c326F0f2291483A3979eFb6cA932b#code) |
+| `TestUSDC` (tUSDC) | [`0x1FA49cc3E1e6ae3D8A717eD36C7426bC58883255`](https://sepolia.etherscan.io/address/0x1FA49cc3E1e6ae3D8A717eD36C7426bC58883255#code) |
+| `ConfidentialUSDC` (cUSDC, ERC-7984) | [`0xe4393Cb1834F0812D2c514f8C1920b56fd1b90F9`](https://sepolia.etherscan.io/address/0xe4393Cb1834F0812D2c514f8C1920b56fd1b90F9#code) |
+
 ## 3 · Try it end-to-end
 
-1. **Customer** tab → *Get test USDC* → *Approve & Deposit*. (Optionally *Faucet & confidential deposit* — the amount is hidden even at the token layer.)
-2. **Operator** tab → *Set encrypted reserves* → (optionally *Credit confidentially*) → *Attest solvency* (commits the Merkle root) → *Publish verdict*.
-3. **Dashboard** → see `✅ SOLVENT` with all numbers `🔒 hidden` and the committed 🌳 root.
-4. **Customer** → *Decrypt my balance* (only yours) and *Verify my inclusion* (proves you were counted, on-chain). **Auditor** → *Decrypt totals* (viewer key).
-5. Open the contract on Etherscan — confirm **no amounts** are ever visible.
+The sidebar views are **Dashboard**, **Vaults** (customer), **Prove** (operator), **Audit** (auditor).
+
+1. **Vaults** → *Get test USDC* → *Approve & Deposit*. Then *Faucet & confidential deposit* — that amount is hidden even at the token layer, unlike the public path above it.
+2. **Prove** → *Set encrypted reserves* → (optionally *Credit confidentially*) → *Attest solvency* (commits the Merkle root) → *Publish verdict*. Reserves must be set first; `attest` reverts `ReservesNotSet` otherwise.
+3. **Dashboard** → the verdict reads **Solvent**, with every amount still `🔒 encrypted`.
+4. **Vaults** → *Decrypt my balance* (only yours) and *Verify my inclusion* (proves you were counted, on-chain). Verify right after publishing — the check uses your *current* claim handle, so a later deposit invalidates it. **Audit** → *Decrypt totals* (viewer key).
+5. Open the vault on Etherscan — confirm **no amounts** are ever visible.
 
 ## Testing
 
